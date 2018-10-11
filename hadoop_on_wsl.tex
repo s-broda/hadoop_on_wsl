@@ -1,0 +1,121 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{exscale,latexsym,amsmath,amsfonts,amsthm,graphicx,natbib,times}
+\usepackage[mtpcal,mtphrb,subscriptcorrection]{mtpro2}%either this or the next line must be commented out
+\usepackage{fullpage}
+\usepackage[usenames]{color}
+\usepackage[pagebackref,colorlinks=true,breaklinks,linkcolor=blue,citecolor=blue,urlcolor=blue,bookmarks,pdfpagemode=UseOutlines,a4paper,pdftitle={Installing Hadoop on Windows Subsystem for Linux}]{hyperref}
+\title{Installing Hadoop on the Windows Subsystem for Linux}
+\author{Simon A.\ Broda\\\href{mailto:simon.broda@uzh.ch}{simon.broda@uzh.ch}}
+
+\begin{document}
+\maketitle
+To run \href{https://hadoop.apache.org/}{Hadoop} under Microsoft Windows, you can either \href{https://wiki.apache.org/hadoop/Hadoop2OnWindows}{build from source} or \href{https://github.com/MuhammadBilalYar/Hadoop-On-Window/wiki/Step-by-step-Hadoop-2.8.0-installation-on-Window-10}{follow this guide} to use the windows binaries (not tested). On Windows 10, a third option is to use the Windows Subsystem for Linux (WSL).
+To do this, install WSL following the instructions  \href{https://docs.microsoft.com/en-us/windows/wsl/install-win10}{here}. Below, it is assumed that you chose Ubuntu; the commands will be different for other distributions.
+\begin{itemize}
+\item The first step is to install Java in Ubuntu; to do that, open bash from the start menu (or from search). Bash is the \emph{shell} for Ubuntu on WSL. In it, you do
+
+\verb+sudo apt-get install default-jdk+
+
+\item After that, you can follow \href{https://jonboulineau.me/blog/hadoop/hadoop-on-wsl}{this guide}: start by doing
+\begin{verbatim}
+sudo apt purge openssh-server
+sudo apt install openssh-server
+sudo service ssh start
+\end{verbatim}
+to fix an issue with SSH. 
+
+\item Then, do
+
+\verb+update-alternatives --config java+
+
+and write down the path that it gives you, up to but not including the \verb+jre/bin/java+ at the end. For me, this gives \verb+/usr/lib/jvm/java-8-openjdk-amd64+.
+
+\item We will set up Hadoop for pseudo-distributed operation, following \href{https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html}{this guide}: start by installing some required packages by doing
+\begin{verbatim}
+sudo apt-get install ssh
+sudo apt-get install rsync
+\end{verbatim}
+
+\item Then, download Hadoop:
+\begin{verbatim}
+wget http://www-eu.apache.org/dist/hadoop/common/\
+hadoop-2.9.1/hadoop-2.9.1.tar.gz
+\end{verbatim}
+(the backslash is a line continuation character in bash; this is so the command fits on this page. You can also delete the backslash and put the whole command on one line).
+\item Unpack it:
+\begin{verbatim}
+tar -xvzf hadoop-2.9.1.tar.gz
+\end{verbatim}
+\item Next, you do
+\begin{verbatim}
+cd hadoop-2.9.1
+nano etc/hadoop/hadoop-env.sh
+\end{verbatim}
+This opens an editor (nano). In nano, using  \verb+ctrl-o+ to save, \verb+ctrl-x+ to exit, change the line
+\begin{verbatim}
+export JAVA_HOME=${JAVA_HOME}
+\end{verbatim}
+so that the path equals the one you wrote down earlier. Be careful not to put a slash and no space before the path; for me, this yields
+\begin{verbatim}
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+\end{verbatim}
+
+\item It remains to configure Hadoop for pseudo-distributed operation. Again using nano,
+\begin{verbatim}
+nano etc/hadoop/core-site.xml
+\end{verbatim}
+In that file, change
+
+\begin{verbatim}
+<configuration>
+
+</configuration>
+\end{verbatim}
+to
+\begin{verbatim}
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+\end{verbatim}
+(you should be able to paste into the bash window by just right-clicking).
+\item Finally, do
+\begin{verbatim}
+nano etc/hadoop/hdfs-site.xml
+\end{verbatim}
+and modify
+\begin{verbatim}
+<configuration>
+
+</configuration>
+\end{verbatim}
+to
+\begin{verbatim}
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+</configuration>
+\end{verbatim}
+
+\item That should pretty much be it. You should now be able to do
+\begin{verbatim}
+bin/hdfs namenode -format
+sbin/start-dfs.sh
+\end{verbatim}
+and then point your browser at \verb+http://localhost:50070+. Note that while Hadoop starts up, you may be prompted several times to confirm whether you are sure that you want to connect; just enter \verb+yes<enter>+. The default is no, so don't just hit \verb+<enter>+. You may also need to enter your password several times. You can ignore the warning about not being able to set the \texttt{niceness}.
+\item To shut down Hadoop, do
+\begin{verbatim}
+sbin/stop-dfs.sh
+\end{verbatim}
+\item Note that the next time you open bash, you have to do 
+\begin{verbatim}
+cd hadoop-2.9.1
+\end{verbatim}
+for the above commands to work again without modification.
+\end{itemize}
+\end{document}
